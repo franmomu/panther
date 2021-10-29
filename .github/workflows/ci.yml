@@ -88,6 +88,53 @@ jobs:
             - name: Run tests
               run: vendor/bin/simple-phpunit
 
+    phpunit-symfony-dev:
+        runs-on: ubuntu-latest
+        env:
+            SYMFONY_REQUIRE: ${{matrix.symfony}}
+        strategy:
+            matrix:
+                include:
+                    - php-versions: '7.4'
+                      symfony: '5.4.*'
+                    - php-versions: '8.0'
+                      symfony: '6.0.*'
+
+            fail-fast: false
+        name: PHP ${{ matrix.php-versions }} and Symfony ${{ matrix.symfony }} Test on ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v2
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php-versions }}
+                  extensions: zip
+
+            - name: Get composer cache directory
+              id: composercache
+              run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+
+            - name: Cache dependencies
+              uses: actions/cache@v2
+              with:
+                  path: ${{ steps.composercache.outputs.dir }}
+                  key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+                  restore-keys: ${{ runner.os }}-composer-
+
+            - name: Configure minimum-stability
+              run: composer config minimum-stability dev
+
+            - name: Install symfony/flex
+              run: composer global require --no-progress --no-scripts --no-plugins symfony/flex
+
+            - name: Install dependencies
+              run: composer install --prefer-dist
+
+            - name: Run tests
+              run: vendor/bin/simple-phpunit
+
     phpunit-lowest:
         runs-on: ubuntu-latest
         name: PHP 8.0 (lowest) Test on ubuntu-latest
